@@ -313,7 +313,7 @@
       if(active){
         let shown=0,total=0;
         tmpl.slots.forEach((sl,i)=>{const rows=esForDay(ds,i);total+=rows.length;
-          rows.forEach(bk=>{if(shown<4){badges+='<span class="badge c'+(i%3)+'">'+esc(bk.cn||bk.en||'?')+'</span>';shown++;}});});
+          rows.forEach(bk=>{if(shown<4){badges+='<span class="badge c'+(i%3)+'">'+esc(sl.start)+'-'+esc(bk.cn||bk.en||'?')+'</span>';shown++;}});});
         if(total>shown)badges+='<span class="badge more">+'+(total-shown)+'</span>';
       }
       cells+='<div class="day'+(active?' has':'')+(ds===todayS?' today':'')+'"'+(active?' data-day="'+ds+'"':'')+'><span class="dnum">'+d+'</span>'+badges+'</div>';
