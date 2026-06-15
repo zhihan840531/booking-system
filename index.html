@@ -536,11 +536,13 @@
   async function toggleHoliday(ds){
     if(!holidaysReady){alert('放假日功能需要先在 Supabase 建一張資料表（請見說明的 SQL）');return;}
     if(holidays.has(ds)){
-      const ok=await sbErr(sb.from('holidays').delete().eq('date',ds),'移除放假失敗');
-      if(ok!==null)holidays.delete(ds);
+      const{error}=await sb.from('holidays').delete().eq('date',ds);
+      if(error){alert('移除放假失敗：'+error.message);return;}
+      holidays.delete(ds);
     }else{
-      const ok=await sbErr(sb.from('holidays').insert({date:ds}),'設定放假失敗');
-      if(ok!==null)holidays.add(ds);
+      const{error}=await sb.from('holidays').insert({date:ds});
+      if(error&&!String(error.message).toLowerCase().includes('duplicate')){alert('設定放假失敗：'+error.message);return;}
+      holidays.add(ds);
     }
     if(page==='es')renderCalendar();else renderOthersCal();
   }
