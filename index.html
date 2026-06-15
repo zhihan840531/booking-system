@@ -4,27 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>試上 / 課程登記系統</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
-
   :root{
-    --pink:#F8D3E0; --pink-deep:#F2A7C3;
-    --yellow:#FBE79C; --yellow-deep:#F2D45C;
-    --mint:#CDEBE0; --mint-deep:#9FD9C4;
-    --lav:#E0D6F0; --peach:#FBD9C4;
-    --blue:#9BC4D6; --blue-deep:#6FA9C0;
-    --ink:#4a4a4a; --ink-soft:#8a8a8a;
-    --bg:#FFFDFA; --card:#FFFFFF; --line:#E6E2DB; --muted:#bdb8b0;
+    --pink:#F8D3E0; --pink-deep:#F2A7C3; --yellow:#FBE79C; --mint:#CDEBE0; --mint-deep:#9FD9C4;
+    --lav:#E0D6F0; --peach:#FBD9C4; --blue:#9BC4D6; --blue-deep:#6FA9C0;
+    --ink:#4a4a4a; --ink-soft:#8a8a8a; --bg:#FFFDFA; --card:#FFFFFF; --line:#E6E2DB; --muted:#bdb8b0;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Noto Sans TC','Gaegu',sans-serif;background:var(--bg);color:var(--ink);
-    -webkit-font-smoothing:antialiased;padding-bottom:60px;}
+  body{font-family:'Noto Sans TC','Gaegu',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;padding-bottom:60px;}
   header{padding:16px 16px 2px;text-align:center;}
   .brand{font-family:'Gaegu',sans-serif;font-size:14px;color:var(--ink-soft);letter-spacing:2px;}
+  .cloud{font-size:11px;color:var(--mint-deep);margin-top:2px;}
 
   .tabs{display:flex;justify-content:center;gap:10px;padding:8px 12px 4px;flex-wrap:wrap;}
-  .tab{font-family:'Gaegu',sans-serif;font-weight:700;font-size:19px;border:none;cursor:pointer;
-    border-radius:14px;padding:9px 24px;color:var(--ink);background:#F0EDE7;transition:.12s;}
+  .tab{font-family:'Gaegu',sans-serif;font-weight:700;font-size:19px;border:none;cursor:pointer;border-radius:14px;padding:9px 24px;color:var(--ink);background:#F0EDE7;transition:.12s;}
   .tab:hover{transform:translateY(-1px);}
   .tab.active{transform:translateY(-1px);box-shadow:0 4px 0 rgba(0,0,0,.06);}
   .tab[data-page="es"].active{background:var(--pink);}
@@ -35,43 +30,37 @@
   .util button:hover{color:var(--blue-deep);text-decoration:underline;}
 
   .viewtoggle{display:flex;justify-content:center;padding:4px 16px 8px;}
-  .viewtoggle button{font-family:'Gaegu',sans-serif;font-weight:700;font-size:15px;border:none;cursor:pointer;
-    background:#F0EDE7;color:var(--ink);padding:8px 24px;}
+  .viewtoggle button{font-family:'Gaegu',sans-serif;font-weight:700;font-size:15px;border:none;cursor:pointer;background:#F0EDE7;color:var(--ink);padding:8px 24px;}
   .viewtoggle button:first-child{border-radius:12px 0 0 12px;}
   .viewtoggle button:last-child{border-radius:0 12px 12px 0;}
   .viewtoggle button.active{background:var(--mint-deep);color:#fff;}
 
   .monthbar{display:flex;align-items:center;justify-content:center;gap:14px;padding:2px 16px;}
   .monthbar h1{font-family:'Gaegu',sans-serif;font-weight:700;font-size:24px;text-align:center;}
-  .navbtn{border:none;background:#F0EDE7;cursor:pointer;border-radius:50%;width:36px;height:36px;
-    font-size:18px;color:var(--ink);display:flex;align-items:center;justify-content:center;}
+  .navbtn{border:none;background:#F0EDE7;cursor:pointer;border-radius:50%;width:36px;height:36px;font-size:18px;color:var(--ink);display:flex;align-items:center;justify-content:center;}
   .navbtn:hover{background:var(--blue);color:#fff;}
 
   .ctrls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:8px 16px 12px;}
-  .btn{font-family:'Gaegu',sans-serif;font-weight:700;font-size:14px;border:none;cursor:pointer;
-    border-radius:12px;padding:9px 16px;color:var(--ink);background:#F0EDE7;transition:.12s;}
+  .btn{font-family:'Gaegu',sans-serif;font-weight:700;font-size:14px;border:none;cursor:pointer;border-radius:12px;padding:9px 16px;color:var(--ink);background:#F0EDE7;transition:.12s;}
   .btn:hover{filter:brightness(.96);}
   .btn.primary{background:var(--blue);color:#fff;}
   .btn.pink{background:var(--pink-deep);color:#fff;}
+  .btn:disabled{opacity:.5;cursor:default;}
 
   .page{display:none;} .page.show{display:block;}
 
-  /* calendar */
   .cal{max-width:1000px;margin:0 auto;padding:0 12px;}
-  .notice{text-align:center;color:var(--ink-soft);font-family:'Gaegu',sans-serif;font-size:16px;
-    background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;}
+  .notice{text-align:center;color:var(--ink-soft);font-family:'Gaegu',sans-serif;font-size:16px;background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;}
   .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
   .dow{text-align:center;font-family:'Gaegu',sans-serif;font-weight:700;color:var(--ink-soft);padding:2px 0 4px;font-size:14px;}
   .day{background:#fff;border-radius:12px;min-height:62px;padding:4px 4px 5px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
   .day.blank{background:transparent;box-shadow:none;}
   .day.has{cursor:pointer;transition:outline .1s;}
   .day.has:hover{outline:2px solid var(--blue);}
-  .dnum{font-family:'Gaegu',sans-serif;font-weight:700;font-size:13px;color:var(--ink-soft);
-    width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;}
+  .dnum{font-family:'Gaegu',sans-serif;font-weight:700;font-size:13px;color:var(--ink-soft);width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;}
   .day.has .dnum{color:var(--ink);}
   .day.today .dnum{background:var(--pink-deep);color:#fff;border-radius:50%;}
-  .badge{display:block;font-size:10.5px;border-radius:6px;padding:1px 4px;margin-top:3px;
-    line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .badge{display:block;font-size:10.5px;border-radius:6px;padding:1px 4px;margin-top:3px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .badge.c0{background:var(--pink);} .badge.c1{background:var(--yellow);} .badge.c2{background:var(--mint);}
   .badge.c3{background:var(--lav);} .badge.c4{background:var(--peach);} .badge.c5{background:#D7E7C8;}
   .badge.full{background:var(--blue-deep);color:#fff;}
@@ -80,25 +69,19 @@
   .slot{border:2px dashed var(--blue);border-radius:12px;padding:9px 10px;margin-bottom:9px;cursor:pointer;min-height:70px;transition:.12s;}
   .slot:hover{background:#F6FBFD;border-color:var(--blue-deep);}
   .slot.empty{display:flex;align-items:center;justify-content:center;color:var(--blue-deep);font-family:'Gaegu',sans-serif;font-size:15px;}
-  .slot .nm{font-weight:700;font-size:15px;}
-  .slot .nm .en{font-weight:400;color:var(--ink-soft);font-size:13px;}
-  .slot .meta{font-size:12px;color:var(--ink-soft);margin-top:3px;}
-  .slot .meta b{color:var(--ink);font-weight:500;}
+  .slot .nm{font-weight:700;font-size:15px;} .slot .nm .en{font-weight:400;color:var(--ink-soft);font-size:13px;}
+  .slot .meta{font-size:12px;color:var(--ink-soft);margin-top:3px;} .slot .meta b{color:var(--ink);font-weight:500;}
   .slot-h{font-family:'Gaegu',sans-serif;font-weight:700;font-size:16px;margin:10px 2px 7px;}
   .slot-h:first-child{margin-top:0;}
 
-  /* day-entry rows (others) */
   .erow{border:2px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:9px;cursor:pointer;}
   .erow:hover{border-color:var(--blue);}
-  .erow .nm{font-weight:700;font-size:15px;}
-  .erow .nm .en{font-weight:400;color:var(--ink-soft);font-size:13px;}
+  .erow .nm{font-weight:700;font-size:15px;} .erow .nm .en{font-weight:400;color:var(--ink-soft);font-size:13px;}
   .erow .tags{margin-top:5px;display:flex;gap:6px;flex-wrap:wrap;}
   .tag{font-size:12px;border-radius:7px;padding:2px 9px;font-weight:500;}
   .tag.course{background:var(--peach);} .tag.source{background:var(--lav);}
-  .erow .sub{font-size:12px;color:var(--ink-soft);margin-top:4px;}
-  .erow .sub b{color:var(--ink);font-weight:500;}
+  .erow .sub{font-size:12px;color:var(--ink-soft);margin-top:4px;} .erow .sub b{color:var(--ink);font-weight:500;}
 
-  /* others list */
   .others-top{max-width:760px;margin:0 auto;padding:0 16px;}
   .search{width:100%;border:2px solid var(--line);border-radius:12px;padding:11px 14px;font-size:15px;font-family:inherit;outline:none;margin-bottom:10px;}
   .search:focus{border-color:var(--blue);}
@@ -109,15 +92,12 @@
   .list{max-width:760px;margin:0 auto;padding:0 16px;display:flex;flex-direction:column;gap:10px;}
   .entry{background:#fff;border-radius:16px;padding:13px 15px;box-shadow:0 2px 8px rgba(0,0,0,.05);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;cursor:pointer;}
   .entry:hover{box-shadow:0 3px 12px rgba(0,0,0,.09);}
-  .entry .e-name{font-weight:700;font-size:16px;}
-  .entry .e-name .en{font-weight:400;color:var(--ink-soft);font-size:14px;}
+  .entry .e-name{font-weight:700;font-size:16px;} .entry .e-name .en{font-weight:400;color:var(--ink-soft);font-size:14px;}
   .entry .e-tags{margin:6px 0 4px;display:flex;gap:6px;flex-wrap:wrap;}
-  .entry .e-sub{font-size:13px;color:var(--ink-soft);}
-  .entry .e-sub b{color:var(--ink);font-weight:500;}
+  .entry .e-sub{font-size:13px;color:var(--ink-soft);} .entry .e-sub b{color:var(--ink);font-weight:500;}
   .entry .e-date{font-size:11px;color:var(--muted);white-space:nowrap;}
   .empty-state{text-align:center;color:var(--ink-soft);padding:46px 16px;font-family:'Gaegu',sans-serif;font-size:17px;}
 
-  /* modal */
   .overlay{position:fixed;inset:0;background:rgba(60,55,50,.4);display:none;align-items:flex-end;justify-content:center;z-index:50;}
   .overlay.show{display:flex;}
   #bookingOverlay,#entryOverlay{z-index:60;}
@@ -143,16 +123,22 @@
   .slotedit .rm{border:none;background:#F6E0E6;color:var(--pink-deep);border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:16px;flex:none;}
   .addslot{width:100%;border:2px dashed var(--blue);background:#fff;color:var(--blue-deep);border-radius:10px;padding:9px;font-family:'Gaegu',sans-serif;font-weight:700;cursor:pointer;margin-top:2px;}
 
+  #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;font-family:'Gaegu',sans-serif;font-size:20px;color:var(--ink-soft);gap:8px;text-align:center;padding:20px;}
+
   @media print{
-    header .brand,.tabs,.util,.viewtoggle,.ctrls,.navbtn,.overlay,.others-top{display:none!important;}
-    body{padding:0;background:#fff;}
-    .day,.entry{box-shadow:none;border:1px solid #eee;break-inside:avoid;}
+    header .brand,header .cloud,.tabs,.util,.viewtoggle,.ctrls,.navbtn,.overlay,.others-top{display:none!important;}
+    body{padding:0;background:#fff;} .day,.entry{box-shadow:none;border:1px solid #eee;break-inside:avoid;}
   }
   @media (min-width:560px){ .overlay{align-items:center;} .sheet{border-radius:22px;} .day{min-height:74px;} }
 </style>
 </head>
 <body>
-  <header><div class="brand">✦ 試上 / 課程登記系統 ✦</div></header>
+  <div id="loading">讀取中… ♪</div>
+
+  <header>
+    <div class="brand">✦ 試上 / 課程登記系統 ✦</div>
+    <div class="cloud">☁ 雲端共用・所有人看到同一份資料</div>
+  </header>
 
   <nav class="tabs">
     <button class="tab" data-page="es">ES 試上</button>
@@ -160,32 +146,27 @@
   </nav>
 
   <div class="util">
+    <button id="refreshBtn">🔄 重新整理</button>
     <button id="printBtn">🖨 列印</button>
     <button id="exportCsv">匯出 Excel</button>
-    <button id="backup">備份</button>
-    <button id="restore">還原</button>
   </div>
 
-  <!-- view toggle (others only) -->
   <div class="viewtoggle" id="viewtoggle" style="display:none">
     <button data-ov="cal">月曆</button>
     <button data-ov="list">清單</button>
   </div>
 
-  <!-- shared month bar -->
   <div class="monthbar" id="monthbar">
     <button class="navbtn" id="prevM">‹</button>
     <h1 id="monthTitle">標題</h1>
     <button class="navbtn" id="nextM">›</button>
   </div>
 
-  <!-- ===== PAGE: ES 試上 ===== -->
   <section class="page" id="pageEs">
     <div class="ctrls"><button class="btn primary" id="settingsBtn">⚙ 設定試上課表</button></div>
     <div class="cal" id="cal"></div>
   </section>
 
-  <!-- ===== PAGE: 其他課程 ===== -->
   <section class="page" id="pageOthers">
     <div id="othersCalWrap"><div class="cal" id="othersCal"></div></div>
     <div id="othersListWrap">
@@ -199,9 +180,7 @@
     </div>
   </section>
 
-  <input type="file" id="fileInput" accept="application/json" style="display:none">
-
-  <!-- ES day detail -->
+  <!-- ES day -->
   <div class="overlay" id="dayOverlay"><div class="sheet">
     <h3 id="dayTitle">日期</h3><div id="daySlots"></div>
     <div class="hint">點空格新增、點已填的格子可編輯</div>
@@ -222,14 +201,14 @@
     </div>
   </div></div>
 
-  <!-- others day detail -->
+  <!-- others day -->
   <div class="overlay" id="otherDayOverlay"><div class="sheet">
     <h3 id="otherDayTitle">日期</h3>
     <div id="otherDayList"></div>
     <button class="btn primary" id="otherDayAdd" style="width:100%;margin-top:4px">＋ 新增登記</button>
   </div></div>
 
-  <!-- entry modal -->
+  <!-- entry -->
   <div class="overlay" id="entryOverlay"><div class="sheet">
     <h3 id="entryTitle">課程登記</h3>
     <div class="field"><label>日期</label><input type="date" id="e-date"></div>
@@ -249,57 +228,57 @@
     </div>
   </div></div>
 
-  <!-- ES template settings -->
+  <!-- ES template settings (per device) -->
   <div class="overlay" id="setOverlay"><div class="sheet">
     <h3>設定試上課表</h3>
     <div class="field"><label>每週上課日</label><div class="wd-row" id="wdRow"></div></div>
     <div class="field"><label>時段（開始 / 結束 / 名額）</label><div id="slotEdit"></div>
       <button class="addslot" id="addSlotBtn">＋ 新增時段</button></div>
+    <div class="hint">課表設定存在本機，新增的學生資料則存雲端共用</div>
     <div class="sheet-actions"><button class="btn primary" id="setSave" style="flex:1">儲存</button></div>
   </div></div>
 
 <script>
 (function(){
   "use strict";
-  const STORE='trial_booking_v3';
+  const SB_URL='https://srummvdutwgejxrwrfdx.supabase.co';
+  const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNydW1tdmR1dHdnZWp4cndyZmR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MTM0ODAsImV4cCI6MjA5NzA4OTQ4MH0.3YDoVMqPwETZu4eZ8X0usRf_777aTxZITdoZX6n_Do8';
+  const sb=window.supabase.createClient(SB_URL,SB_KEY);
+
   const WD_LABEL=['日','一','二','三','四','五','六'];
   const COURSES=['ES','PH','EP','EL','SC','WP'];
   const SOURCES=['Walk in','Call in','Online','設攤','家長介紹'];
+  const TMPL_KEY='es_template_local';
 
-  let page='es', othersView='cal';
-  let currentYM=todayYM();
+  let page='es', othersView='cal', currentYM=todayYM();
   let bookingCtx=null, dayCtx=null, editingEntryId=null, otherDayCtx=null;
   let courseFilter='全部', searchText='';
   let tmpWeekdays=[], tmpSlots=[];
-
-  let db=load();
+  let esRows=[], otherRows=[];
+  let esTemplate=loadTemplate();
 
   // helpers
-  function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function todayYM(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
   function pad(n){return String(n).padStart(2,'0');}
   function dateStr(y,m,d){return y+'-'+pad(m)+'-'+pad(d);}
   function today(){const d=new Date();return dateStr(d.getFullYear(),d.getMonth()+1,d.getDate());}
   function ymLabel(ym){const[y,m]=ym.split('-');return y+' 年 '+Number(m)+' 月';}
-  function esTemplate(){return{weekdays:[2,4],slots:[{start:'16:00',end:'17:30',cap:2},{start:'16:30',end:'18:00',cap:2}]};}
   function courseCls(course){const i=COURSES.indexOf(course);return 'c'+((i<0?0:i)%6);}
+  function defaultTemplate(){return{weekdays:[2,4],slots:[{start:'16:00',end:'17:30',cap:2},{start:'16:30',end:'18:00',cap:2}]};}
+  function loadTemplate(){try{const r=localStorage.getItem(TMPL_KEY);if(r)return JSON.parse(r);}catch(e){}return defaultTemplate();}
+  function saveTemplate(){localStorage.setItem(TMPL_KEY,JSON.stringify(esTemplate));}
 
-  function load(){
-    let o=null;
-    try{const raw=localStorage.getItem(STORE);if(raw){const p=JSON.parse(raw);if(p.esTrial&&p.others)o=p;}}catch(e){}
-    if(!o){try{const old=localStorage.getItem('trial_booking_v2');if(old){const v2=JSON.parse(old);const sub=v2.ES&&v2.ES.subs&&v2.ES.subs[0];
-      if(sub)o={esTrial:{template:sub.template||esTemplate(),bookings:sub.bookings||{}},others:[]};}}catch(e){}}
-    if(!o)o={esTrial:{template:esTemplate(),bookings:{}},others:[]};
-    // normalize: every other-course entry needs a date
-    o.others.forEach(x=>{if(!x.date){x.date=x.createdAt?dateOf(x.createdAt):today();}});
-    return o;
+  async function sbErr(p,msg){
+    try{const{data,error}=await p;if(error){alert((msg||'雲端操作失敗')+'：'+error.message);return null;}return data;}
+    catch(e){alert((msg||'連線失敗')+'：'+e.message);return null;}
   }
-  function dateOf(ms){const d=new Date(ms);return dateStr(d.getFullYear(),d.getMonth()+1,d.getDate());}
-  function save(){localStorage.setItem(STORE,JSON.stringify(db));}
 
-  function slotArr(date,si){const b=db.esTrial.bookings;if(!b[date])b[date]=[];if(!b[date][si])b[date][si]=[];return b[date][si];}
-  function filled(date,si){const a=db.esTrial.bookings[date]&&db.esTrial.bookings[date][si];return a?a.filter(Boolean).length:0;}
+  // ES data helpers
+  function esForDay(date,slot){return esRows.filter(r=>r.date===date&&r.slot===slot)
+    .sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)));}
+  function esFilled(date,slot){return esForDay(date,slot).length;}
+  function entriesOn(ds){return otherRows.filter(x=>x.date===ds);}
 
   // ---------- top render ----------
   function render(){
@@ -322,7 +301,7 @@
 
   // ---------- ES calendar ----------
   function renderCalendar(){
-    const tmpl=db.esTrial.template, cal=document.getElementById('cal');
+    const tmpl=esTemplate, cal=document.getElementById('cal');
     let head=(!tmpl.weekdays.length||!tmpl.slots.length)?'<div class="notice">還沒設定課表，點「⚙ 設定試上課表」安排上課日與時段 ♪</div>':'';
     const[y,m]=currentYM.split('-').map(Number);
     const first=new Date(y,m-1,1).getDay(), days=new Date(y,m,0).getDate(), todayS=today();
@@ -331,7 +310,7 @@
     for(let d=1;d<=days;d++){
       const ds=dateStr(y,m,d), wd=new Date(y,m-1,d).getDay(), active=tmpl.weekdays.includes(wd)&&tmpl.slots.length;
       let badges='';
-      if(active)tmpl.slots.forEach((sl,i)=>{const f=filled(ds,i);badges+='<span class="badge '+(f>=sl.cap?'full':('c'+(i%3)))+'">'+esc(sl.start)+' '+f+'/'+sl.cap+'</span>';});
+      if(active)tmpl.slots.forEach((sl,i)=>{const f=esFilled(ds,i);badges+='<span class="badge '+(f>=sl.cap?'full':('c'+(i%3)))+'">'+esc(sl.start)+' '+f+'/'+sl.cap+'</span>';});
       cells+='<div class="day'+(active?' has':'')+(ds===todayS?' today':'')+'"'+(active?' data-day="'+ds+'"':'')+'><span class="dnum">'+d+'</span>'+badges+'</div>';
     }
     cal.innerHTML=head+'<div class="cal-grid">'+cells+'</div>';
@@ -341,47 +320,61 @@
   const dayOv=document.getElementById('dayOverlay'), bOv=document.getElementById('bookingOverlay');
   function openDay(ds){dayCtx=ds;renderDay();dayOv.classList.add('show');}
   function renderDay(){
-    const ds=dayCtx, tmpl=db.esTrial.template;
+    const ds=dayCtx, tmpl=esTemplate;
     const[y,m,d]=ds.split('-').map(Number), wd=new Date(y,m-1,d).getDay();
     document.getElementById('dayTitle').textContent=m+'/'+d+'（'+WD_LABEL[wd]+'）　ES 試上';
     let html='';
     tmpl.slots.forEach((sl,si)=>{
       html+='<div class="slot-h">'+esc(sl.start)+'–'+esc(sl.end)+' <span style="color:var(--ink-soft);font-weight:400;font-size:14px">名額 '+sl.cap+'</span></div>';
-      for(let j=0;j<sl.cap;j++){
-        const arr=db.esTrial.bookings[ds]&&db.esTrial.bookings[ds][si];const bk=arr&&arr[j];
-        html+=bk?'<div class="slot" data-book data-si="'+si+'" data-j="'+j+'"><div class="nm">'+esc(bk.cn||'(未填中文)')+(bk.en?' <span class="en">'+esc(bk.en)+'</span>':'')+'</div><div class="meta">'+(bk.age?'<b>'+esc(bk.age)+'</b> 歲　':'')+(bk.staff?'行政：<b>'+esc(bk.staff)+'</b>':'')+'</div></div>'
-          :'<div class="slot empty" data-book data-si="'+si+'" data-j="'+j+'">＋ 點擊新增</div>';
+      const rows=esForDay(ds,si);
+      rows.forEach(bk=>{
+        html+='<div class="slot" data-id="'+bk.id+'" data-si="'+si+'"><div class="nm">'+esc(bk.cn||'(未填中文)')+(bk.en?' <span class="en">'+esc(bk.en)+'</span>':'')+'</div><div class="meta">'+(bk.age?'<b>'+esc(bk.age)+'</b> 歲　':'')+(bk.staff?'行政：<b>'+esc(bk.staff)+'</b>':'')+'</div></div>';
+      });
+      for(let j=rows.length;j<sl.cap;j++){
+        html+='<div class="slot empty" data-new data-si="'+si+'">＋ 點擊新增</div>';
       }
     });
     document.getElementById('daySlots').innerHTML=html;
-    document.querySelectorAll('#daySlots [data-book]').forEach(b=>b.onclick=()=>openBooking(ds,Number(b.dataset.si),Number(b.dataset.j)));
+    document.querySelectorAll('#daySlots [data-id]').forEach(b=>b.onclick=()=>openBooking(ds,Number(b.dataset.si),b.dataset.id));
+    document.querySelectorAll('#daySlots [data-new]').forEach(b=>b.onclick=()=>openBooking(ds,Number(b.dataset.si),null));
   }
-  function openBooking(ds,si,j){
-    bookingCtx={date:ds,slot:si,idx:j};
-    const arr=db.esTrial.bookings[ds]&&db.esTrial.bookings[ds][si];const bk=arr&&arr[j];
-    const sl=db.esTrial.template.slots[si];const[,m,d]=ds.split('-').map(Number);
+  function openBooking(ds,si,id){
+    bookingCtx={date:ds,slot:si,id:id||null};
+    const bk=id?esRows.find(r=>r.id===id):null;
+    const sl=esTemplate.slots[si];const[,m,d]=ds.split('-').map(Number);
     document.getElementById('bookingTitle').textContent=m+'/'+d+'　'+sl.start+'–'+sl.end;
-    document.getElementById('b-cn').value=bk?bk.cn:'';document.getElementById('b-en').value=bk?bk.en:'';
-    document.getElementById('b-age').value=bk?bk.age:'';document.getElementById('b-staff').value=bk?bk.staff:'';
-    document.getElementById('bookingDelete').style.display=bk?'':'none';bOv.classList.add('show');
+    document.getElementById('b-cn').value=bk?bk.cn||'':'';
+    document.getElementById('b-en').value=bk?bk.en||'':'';
+    document.getElementById('b-age').value=bk?bk.age||'':'';
+    document.getElementById('b-staff').value=bk?bk.staff||'':'';
+    document.getElementById('bookingDelete').style.display=id?'':'none';
+    bOv.classList.add('show');
   }
-  document.getElementById('bookingSave').onclick=function(){
+  document.getElementById('bookingSave').onclick=async function(){
+    const btn=this;btn.disabled=true;
     const cn=document.getElementById('b-cn').value.trim(),en=document.getElementById('b-en').value.trim();
-    if(!cn&&!en){alert('請至少填中文或英文姓名');return;}
-    const arr=slotArr(bookingCtx.date,bookingCtx.slot);
-    arr[bookingCtx.idx]={cn,en,age:document.getElementById('b-age').value.trim(),staff:document.getElementById('b-staff').value.trim()};
-    save();bOv.classList.remove('show');renderDay();renderCalendar();
+    if(!cn&&!en){alert('請至少填中文或英文姓名');btn.disabled=false;return;}
+    const payload={date:bookingCtx.date,slot:bookingCtx.slot,cn,en,age:document.getElementById('b-age').value.trim(),staff:document.getElementById('b-staff').value.trim()};
+    if(bookingCtx.id){
+      const data=await sbErr(sb.from('es_bookings').update(payload).eq('id',bookingCtx.id).select(),'更新失敗');
+      if(data){const i=esRows.findIndex(r=>r.id===bookingCtx.id);if(i>=0)esRows[i]=data[0];}
+    }else{
+      const data=await sbErr(sb.from('es_bookings').insert(payload).select(),'新增失敗');
+      if(data)esRows.push(data[0]);
+    }
+    btn.disabled=false;bOv.classList.remove('show');renderDay();renderCalendar();
   };
-  document.getElementById('bookingDelete').onclick=function(){
-    const arr=slotArr(bookingCtx.date,bookingCtx.slot);arr[bookingCtx.idx]=null;
-    db.esTrial.bookings[bookingCtx.date][bookingCtx.slot]=arr.filter(Boolean);
-    save();bOv.classList.remove('show');renderDay();renderCalendar();
+  document.getElementById('bookingDelete').onclick=async function(){
+    if(!bookingCtx.id)return;
+    const ok=await sbErr(sb.from('es_bookings').delete().eq('id',bookingCtx.id),'刪除失敗');
+    if(ok!==null)esRows=esRows.filter(r=>r.id!==bookingCtx.id);
+    bOv.classList.remove('show');renderDay();renderCalendar();
   };
 
   // ---------- ES template settings ----------
   const setOv=document.getElementById('setOverlay');
   document.getElementById('settingsBtn').onclick=function(){
-    const tmpl=db.esTrial.template;tmpWeekdays=tmpl.weekdays.slice();tmpSlots=tmpl.slots.map(s=>({start:s.start,end:s.end,cap:s.cap}));
+    tmpWeekdays=esTemplate.weekdays.slice();tmpSlots=esTemplate.slots.map(s=>({start:s.start,end:s.end,cap:s.cap}));
     renderWd();renderSlotEdit();setOv.classList.add('show');
   };
   function renderWd(){
@@ -397,12 +390,11 @@
   }
   document.getElementById('addSlotBtn').onclick=()=>{tmpSlots.push({start:'16:00',end:'17:30',cap:2});renderSlotEdit();};
   document.getElementById('setSave').onclick=function(){
-    db.esTrial.template={weekdays:tmpWeekdays.slice().sort((a,b)=>a-b),slots:tmpSlots.map(s=>({start:s.start,end:s.end,cap:s.cap}))};
-    save();setOv.classList.remove('show');renderCalendar();
+    esTemplate={weekdays:tmpWeekdays.slice().sort((a,b)=>a-b),slots:tmpSlots.map(s=>({start:s.start,end:s.end,cap:s.cap}))};
+    saveTemplate();setOv.classList.remove('show');renderCalendar();
   };
 
   // ---------- others calendar ----------
-  function entriesOn(ds){return db.others.filter(x=>x.date===ds);}
   function renderOthersCal(){
     const cal=document.getElementById('othersCal');
     const[y,m]=currentYM.split('-').map(Number);
@@ -410,8 +402,7 @@
     let cells=WD_LABEL.map(w=>'<div class="dow">'+w+'</div>').join('');
     for(let i=0;i<first;i++)cells+='<div class="day blank"></div>';
     for(let d=1;d<=days;d++){
-      const ds=dateStr(y,m,d);
-      const items=entriesOn(ds);
+      const ds=dateStr(y,m,d), items=entriesOn(ds);
       let badges='';
       items.slice(0,3).forEach(x=>{badges+='<span class="badge '+courseCls(x.course)+'">'+esc(x.cn||x.en||'?')+'</span>';});
       if(items.length>3)badges+='<span class="badge more">+'+(items.length-3)+'</span>';
@@ -435,13 +426,12 @@
   // ---------- others list ----------
   function renderChips(){
     const box=document.getElementById('courseChips');
-    const opts=['全部'].concat(COURSES);
-    box.innerHTML=opts.map(c=>'<button class="chip'+(c===courseFilter?' active':'')+'" data-c="'+esc(c)+'">'+esc(c)+'</button>').join('');
+    box.innerHTML=['全部'].concat(COURSES).map(c=>'<button class="chip'+(c===courseFilter?' active':'')+'" data-c="'+esc(c)+'">'+esc(c)+'</button>').join('');
     box.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{courseFilter=b.dataset.c;renderList();});
   }
   function renderList(){
     renderChips();
-    let items=db.others.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
+    let items=otherRows.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||String(b.created_at).localeCompare(String(a.created_at)));
     if(courseFilter!=='全部')items=items.filter(x=>x.course===courseFilter);
     if(searchText)items=items.filter(x=>((x.cn||'')+(x.en||'')).toLowerCase().includes(searchText.toLowerCase()));
     document.getElementById('count').textContent='共 '+items.length+' 筆'+(courseFilter!=='全部'?'（'+courseFilter+'）':'');
@@ -461,39 +451,44 @@
   fillSelect('e-course',COURSES);fillSelect('e-source',SOURCES);
   function openEntry(id,presetDate){
     editingEntryId=id||null;
-    const x=id?db.others.find(o=>o.id===id):null;
+    const x=id?otherRows.find(o=>o.id===id):null;
     document.getElementById('entryTitle').textContent=id?'編輯登記':'新增登記';
     document.getElementById('e-date').value=x?(x.date||today()):(presetDate||today());
-    document.getElementById('e-cn').value=x?x.cn:'';
-    document.getElementById('e-en').value=x?x.en:'';
-    document.getElementById('e-age').value=x?x.age:'';
+    document.getElementById('e-cn').value=x?x.cn||'':'';
+    document.getElementById('e-en').value=x?x.en||'':'';
+    document.getElementById('e-age').value=x?x.age||'':'';
     document.getElementById('e-course').value=x?x.course:COURSES[0];
-    document.getElementById('e-staff').value=x?x.staff:'';
+    document.getElementById('e-staff').value=x?x.staff||'':'';
     document.getElementById('e-source').value=x?x.source:SOURCES[0];
     document.getElementById('entryDelete').style.display=id?'':'none';
     eOv.classList.add('show');
   }
   document.getElementById('addEntry').onclick=()=>openEntry(null,today());
   function refreshOthers(){
-    renderOthersCal&&(othersView==='cal'&&page==='others'?renderOthersCal():null);
-    if(page==='others'&&othersView==='list')renderList();
     if(odOv.classList.contains('show'))renderOtherDay();
     if(page==='others'&&othersView==='cal')renderOthersCal();
+    if(page==='others'&&othersView==='list')renderList();
   }
-  document.getElementById('entrySave').onclick=function(){
+  document.getElementById('entrySave').onclick=async function(){
+    const btn=this;btn.disabled=true;
     const cn=document.getElementById('e-cn').value.trim(),en=document.getElementById('e-en').value.trim();
-    if(!cn&&!en){alert('請至少填中文或英文姓名');return;}
-    const data={date:document.getElementById('e-date').value||today(),cn,en,
-      age:document.getElementById('e-age').value.trim(),course:document.getElementById('e-course').value,
-      staff:document.getElementById('e-staff').value.trim(),source:document.getElementById('e-source').value};
-    if(editingEntryId)Object.assign(db.others.find(o=>o.id===editingEntryId),data);
-    else db.others.push(Object.assign({id:uid(),createdAt:Date.now()},data));
-    save();eOv.classList.remove('show');refreshOthers();
+    if(!cn&&!en){alert('請至少填中文或英文姓名');btn.disabled=false;return;}
+    const payload={date:document.getElementById('e-date').value||today(),cn,en,age:document.getElementById('e-age').value.trim(),course:document.getElementById('e-course').value,staff:document.getElementById('e-staff').value.trim(),source:document.getElementById('e-source').value};
+    if(editingEntryId){
+      const data=await sbErr(sb.from('other_entries').update(payload).eq('id',editingEntryId).select(),'更新失敗');
+      if(data){const i=otherRows.findIndex(o=>o.id===editingEntryId);if(i>=0)otherRows[i]=data[0];}
+    }else{
+      const data=await sbErr(sb.from('other_entries').insert(payload).select(),'新增失敗');
+      if(data)otherRows.push(data[0]);
+    }
+    btn.disabled=false;eOv.classList.remove('show');refreshOthers();
   };
-  document.getElementById('entryDelete').onclick=function(){
+  document.getElementById('entryDelete').onclick=async function(){
+    if(!editingEntryId)return;
     if(!confirm('確定刪除這筆登記？'))return;
-    db.others=db.others.filter(o=>o.id!==editingEntryId);
-    save();eOv.classList.remove('show');refreshOthers();
+    const ok=await sbErr(sb.from('other_entries').delete().eq('id',editingEntryId),'刪除失敗');
+    if(ok!==null)otherRows=otherRows.filter(o=>o.id!==editingEntryId);
+    eOv.classList.remove('show');refreshOthers();
   };
 
   // ---------- nav / toggles ----------
@@ -507,36 +502,42 @@
 
   [dayOv,bOv,eOv,setOv,odOv].forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('show');}));
   document.getElementById('printBtn').onclick=()=>window.print();
-
-  // backup / restore
-  document.getElementById('backup').onclick=function(){
-    const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='booking-backup-'+todayYM()+'.json';a.click();URL.revokeObjectURL(a.href);
-  };
-  document.getElementById('restore').onclick=()=>document.getElementById('fileInput').click();
-  document.getElementById('fileInput').onchange=function(e){
-    const f=e.target.files[0];if(!f)return;const r=new FileReader();
-    r.onload=()=>{try{const o=JSON.parse(r.result);if(!o.esTrial||!o.others)throw 0;if(!confirm('還原會覆蓋目前所有資料，確定？'))return;
-      o.others.forEach(x=>{if(!x.date)x.date=x.createdAt?dateOf(x.createdAt):today();});db=o;save();render();
-    }catch(err){alert('檔案格式不正確');}};r.readAsText(f);e.target.value='';
-  };
+  document.getElementById('refreshBtn').onclick=()=>fetchAll(true);
 
   // export csv
   document.getElementById('exportCsv').onclick=function(){
     const rows=[['類型','日期','星期','時段','中文姓名','英文姓名','年齡','課程','行政','來源']];
-    const b=db.esTrial.bookings;
-    Object.keys(b).sort().forEach(date=>{const[y,m,d]=date.split('-').map(Number);const wd=WD_LABEL[new Date(y,m-1,d).getDay()];
-      (b[date]||[]).forEach((arr,si)=>{const sl=db.esTrial.template.slots[si];(arr||[]).forEach(bk=>{if(!bk)return;
-        rows.push(['ES試上',date,wd,sl?sl.start+'-'+sl.end:'',bk.cn,bk.en,bk.age,'ES',bk.staff,'']);});});});
-    db.others.slice().sort((a,b2)=>(a.date||'').localeCompare(b2.date||'')).forEach(x=>{
+    esRows.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')||a.slot-b.slot).forEach(bk=>{
+      const wd=bk.date?WD_LABEL[new Date(bk.date.split('-')[0],bk.date.split('-')[1]-1,bk.date.split('-')[2]).getDay()]:'';
+      const sl=esTemplate.slots[bk.slot];
+      rows.push(['ES試上',bk.date||'',wd,sl?sl.start+'-'+sl.end:'',bk.cn,bk.en,bk.age,'ES',bk.staff,'']);
+    });
+    otherRows.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(x=>{
       const wd=x.date?WD_LABEL[new Date(x.date.split('-')[0],x.date.split('-')[1]-1,x.date.split('-')[2]).getDay()]:'';
-      rows.push(['其他課程',x.date||'',wd,'',x.cn,x.en,x.age,x.course,x.staff,x.source]);});
+      rows.push(['其他課程',x.date||'',wd,'',x.cn,x.en,x.age,x.course,x.staff,x.source]);
+    });
     const csv=rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
     const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='登記名單-'+todayYM()+'.csv';a.click();URL.revokeObjectURL(a.href);
   };
 
-  render();
+  // ---------- init / fetch ----------
+  async function fetchAll(silent){
+    const ld=document.getElementById('loading');
+    if(!silent){ld.style.display='flex';ld.textContent='讀取中… ♪';}
+    const e1=await sb.from('es_bookings').select('*');
+    const e2=await sb.from('other_entries').select('*');
+    if(e1.error||e2.error){
+      const msg=(e1.error||e2.error).message;
+      ld.style.display='flex';
+      ld.innerHTML='讀取資料時出問題 😢<br><span style="font-size:14px">'+esc(msg)+'</span><br><span style="font-size:13px">請確認資料表與政策已建立，再重整頁面</span>';
+      return;
+    }
+    esRows=e1.data||[];otherRows=e2.data||[];
+    ld.style.display='none';
+    render();
+  }
+  fetchAll(false);
 })();
 </script>
 </body>
