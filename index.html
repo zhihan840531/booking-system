@@ -65,6 +65,7 @@
   .badge.c3{background:var(--lav);} .badge.c4{background:var(--peach);} .badge.c5{background:#D7E7C8;}
   .badge.full{background:var(--blue-deep);color:#fff;}
   .badge.more{background:#EFEBE4;color:var(--ink-soft);text-align:center;}
+  .badge.slotempty{background:#F1EEE8;color:var(--muted);}
   .day.holiday{background:var(--holiday)!important;}
   .day.holiday .dnum{color:var(--blue-deep);}
   .hol-label{display:block;font-size:11px;color:var(--blue-deep);font-family:'Gaegu',sans-serif;font-weight:700;margin-top:4px;}
@@ -328,10 +329,12 @@
       let badges='';
       if(isHol)badges='<span class="hol-label">放假</span>';
       else if(active){
-        let shown=0,total=0;
-        tmpl.slots.forEach((sl,i)=>{const rows=esForDay(ds,i);total+=rows.length;
-          rows.forEach(bk=>{if(shown<4){badges+='<span class="badge c'+(i%3)+'">'+esc(sl.start)+'-'+esc(bk.cn||bk.en||'?')+'</span>';shown++;}});});
-        if(total>shown)badges+='<span class="badge more">+'+(total-shown)+'</span>';
+        tmpl.slots.forEach((sl,i)=>{const rows=esForDay(ds,i);
+          for(let j=0;j<sl.cap;j++){const bk=rows[j];
+            if(bk){const parts=[bk.cn||bk.en||'?'];if(bk.staff)parts.push(bk.staff);parts.push(sl.start);
+              badges+='<span class="badge c'+(i%3)+'">'+esc(parts.join('-'))+'</span>';}
+            else badges+='<span class="badge slotempty">'+esc(sl.start)+'</span>';
+          }});
       }
       const clickable=holidayMode||active;
       const attr=holidayMode?(' data-hol="'+ds+'"'):(active?(' data-day="'+ds+'"'):'');
