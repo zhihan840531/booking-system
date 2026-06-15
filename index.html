@@ -310,7 +310,12 @@
     for(let d=1;d<=days;d++){
       const ds=dateStr(y,m,d), wd=new Date(y,m-1,d).getDay(), active=tmpl.weekdays.includes(wd)&&tmpl.slots.length;
       let badges='';
-      if(active)tmpl.slots.forEach((sl,i)=>{const f=esFilled(ds,i);badges+='<span class="badge '+(f>=sl.cap?'full':('c'+(i%3)))+'">'+esc(sl.start)+' '+f+'/'+sl.cap+'</span>';});
+      if(active){
+        let shown=0,total=0;
+        tmpl.slots.forEach((sl,i)=>{const rows=esForDay(ds,i);total+=rows.length;
+          rows.forEach(bk=>{if(shown<4){badges+='<span class="badge c'+(i%3)+'">'+esc(bk.cn||bk.en||'?')+'</span>';shown++;}});});
+        if(total>shown)badges+='<span class="badge more">+'+(total-shown)+'</span>';
+      }
       cells+='<div class="day'+(active?' has':'')+(ds===todayS?' today':'')+'"'+(active?' data-day="'+ds+'"':'')+'><span class="dnum">'+d+'</span>'+badges+'</div>';
     }
     cal.innerHTML=head+'<div class="cal-grid">'+cells+'</div>';
