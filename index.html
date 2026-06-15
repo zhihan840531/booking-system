@@ -222,7 +222,10 @@
   <!-- entry -->
   <div class="overlay" id="entryOverlay"><div class="sheet">
     <h3 id="entryTitle">課程登記</h3>
-    <div class="field"><label>日期</label><input type="date" id="e-date"></div>
+    <div class="row2">
+      <div class="field"><label>日期</label><input type="date" id="e-date"></div>
+      <div class="field"><label>預約時間</label><input type="time" id="e-time"></div>
+    </div>
     <div class="field"><label>中文姓名</label><input type="text" id="e-cn" placeholder="王小明"></div>
     <div class="field"><label>英文姓名</label><input type="text" id="e-en" placeholder="Andy"></div>
     <div class="row2">
@@ -428,7 +431,7 @@
       let badges='';
       if(isHol)badges='<span class="hol-label">放假</span>';
       else{
-        items.slice(0,3).forEach(x=>{badges+='<span class="badge '+courseCls(x.course)+'">'+esc(x.cn||x.en||'?')+'</span>';});
+        items.slice(0,3).forEach(x=>{const parts=[x.cn||x.en||'?'];if(x.staff)parts.push(x.staff);if(x.time)parts.push(x.time);badges+='<span class="badge '+courseCls(x.course)+'">'+esc(parts.join('-'))+'</span>';});
         if(items.length>3)badges+='<span class="badge more">+'+(items.length-3)+'</span>';
       }
       const clickable=holidayMode||!isHol;
@@ -445,7 +448,7 @@
     const ds=otherDayCtx;const[y,m,d]=ds.split('-').map(Number),wd=new Date(y,m-1,d).getDay();
     document.getElementById('otherDayTitle').textContent=m+'/'+d+'（'+WD_LABEL[wd]+'）登記';
     const items=entriesOn(ds);
-    document.getElementById('otherDayList').innerHTML=items.length?items.map(x=>'<div class="erow" data-id="'+x.id+'"><div class="nm">'+esc(x.cn||'(未填中文)')+(x.en?' <span class="en">'+esc(x.en)+'</span>':'')+'</div><div class="tags">'+(x.course?'<span class="tag course">'+esc(x.course)+'</span>':'')+(x.source?'<span class="tag source">'+esc(x.source)+'</span>':'')+'</div><div class="sub">'+(x.age?'<b>'+esc(x.age)+'</b> 歲　':'')+(x.staff?'行政：<b>'+esc(x.staff)+'</b>':'')+'</div></div>').join('')
+    document.getElementById('otherDayList').innerHTML=items.length?items.map(x=>'<div class="erow" data-id="'+x.id+'"><div class="nm">'+esc(x.cn||'(未填中文)')+(x.en?' <span class="en">'+esc(x.en)+'</span>':'')+'</div><div class="tags">'+(x.course?'<span class="tag course">'+esc(x.course)+'</span>':'')+(x.source?'<span class="tag source">'+esc(x.source)+'</span>':'')+'</div><div class="sub">'+(x.time?'時間：<b>'+esc(x.time)+'</b>　':'')+(x.age?'<b>'+esc(x.age)+'</b> 歲　':'')+(x.staff?'行政：<b>'+esc(x.staff)+'</b>':'')+'</div></div>').join('')
       :'<div style="text-align:center;color:var(--ink-soft);padding:14px 0">這天還沒有登記</div>';
     document.querySelectorAll('#otherDayList [data-id]').forEach(el=>el.onclick=()=>openEntry(el.dataset.id));
   }
@@ -467,7 +470,7 @@
     if(!items.length){list.innerHTML='<div class="empty-state">還沒有登記資料<br>點「＋ 新增登記」開始吧 ♪</div>';return;}
     list.innerHTML=items.map(x=>{
       const dstr=x.date?Number(x.date.split('-')[1])+'/'+Number(x.date.split('-')[2]):'';
-      return '<div class="entry" data-id="'+x.id+'"><div><div class="e-name">'+esc(x.cn||'(未填中文)')+(x.en?' <span class="en">'+esc(x.en)+'</span>':'')+'</div><div class="e-tags">'+(x.course?'<span class="tag course">'+esc(x.course)+'</span>':'')+(x.source?'<span class="tag source">'+esc(x.source)+'</span>':'')+'</div><div class="e-sub">'+(x.age?'<b>'+esc(x.age)+'</b> 歲　':'')+(x.staff?'行政：<b>'+esc(x.staff)+'</b>':'')+'</div></div><div class="e-date">'+dstr+'</div></div>';
+      return '<div class="entry" data-id="'+x.id+'"><div><div class="e-name">'+esc(x.cn||'(未填中文)')+(x.en?' <span class="en">'+esc(x.en)+'</span>':'')+'</div><div class="e-tags">'+(x.course?'<span class="tag course">'+esc(x.course)+'</span>':'')+(x.source?'<span class="tag source">'+esc(x.source)+'</span>':'')+'</div><div class="e-sub">'+(x.time?'時間：<b>'+esc(x.time)+'</b>　':'')+(x.age?'<b>'+esc(x.age)+'</b> 歲　':'')+(x.staff?'行政：<b>'+esc(x.staff)+'</b>':'')+'</div></div><div class="e-date">'+dstr+'</div></div>';
     }).join('');
     list.querySelectorAll('[data-id]').forEach(el=>el.onclick=()=>openEntry(el.dataset.id));
   }
@@ -482,6 +485,7 @@
     const x=id?otherRows.find(o=>o.id===id):null;
     document.getElementById('entryTitle').textContent=id?'編輯登記':'新增登記';
     document.getElementById('e-date').value=x?(x.date||today()):(presetDate||today());
+    document.getElementById('e-time').value=x?(x.time||''):'';
     document.getElementById('e-cn').value=x?x.cn||'':'';
     document.getElementById('e-en').value=x?x.en||'':'';
     document.getElementById('e-age').value=x?x.age||'':'';
@@ -501,7 +505,7 @@
     const btn=this;btn.disabled=true;
     const cn=document.getElementById('e-cn').value.trim(),en=document.getElementById('e-en').value.trim();
     if(!cn&&!en){alert('請至少填中文或英文姓名');btn.disabled=false;return;}
-    const payload={date:document.getElementById('e-date').value||today(),cn,en,age:document.getElementById('e-age').value.trim(),course:document.getElementById('e-course').value,staff:document.getElementById('e-staff').value.trim(),source:document.getElementById('e-source').value};
+    const payload={date:document.getElementById('e-date').value||today(),time:document.getElementById('e-time').value,cn,en,age:document.getElementById('e-age').value.trim(),course:document.getElementById('e-course').value,staff:document.getElementById('e-staff').value.trim(),source:document.getElementById('e-source').value};
     if(editingEntryId){
       const data=await sbErr(sb.from('other_entries').update(payload).eq('id',editingEntryId).select(),'更新失敗');
       if(data){const i=otherRows.findIndex(o=>o.id===editingEntryId);if(i>=0)otherRows[i]=data[0];}
@@ -566,7 +570,7 @@
     });
     otherRows.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(x=>{
       const wd=x.date?WD_LABEL[new Date(x.date.split('-')[0],x.date.split('-')[1]-1,x.date.split('-')[2]).getDay()]:'';
-      rows.push(['其他課程',x.date||'',wd,'',x.cn,x.en,x.age,x.course,x.staff,x.source]);
+      rows.push(['其他課程',x.date||'',wd,x.time||'',x.cn,x.en,x.age,x.course,x.staff,x.source]);
     });
     const csv=rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
     const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
