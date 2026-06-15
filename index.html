@@ -10,7 +10,7 @@
   :root{
     --pink:#F8D3E0; --pink-deep:#F2A7C3; --yellow:#FBE79C; --mint:#CDEBE0; --mint-deep:#9FD9C4;
     --lav:#E0D6F0; --peach:#FBD9C4; --blue:#9BC4D6; --blue-deep:#6FA9C0;
-    --ink:#4a4a4a; --ink-soft:#8a8a8a; --bg:#FFFDFA; --card:#FFFFFF; --line:#E6E2DB; --muted:#bdb8b0;
+    --ink:#4a4a4a; --ink-soft:#8a8a8a; --bg:#FFFDFA; --card:#FFFFFF; --line:#E6E2DB; --muted:#bdb8b0; --holiday:#CFE6F5;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Noto Sans TC','Gaegu',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;padding-bottom:60px;}
@@ -65,6 +65,14 @@
   .badge.c3{background:var(--lav);} .badge.c4{background:var(--peach);} .badge.c5{background:#D7E7C8;}
   .badge.full{background:var(--blue-deep);color:#fff;}
   .badge.more{background:#EFEBE4;color:var(--ink-soft);text-align:center;}
+  .day.holiday{background:var(--holiday)!important;}
+  .day.holiday .dnum{color:var(--blue-deep);}
+  .hol-label{display:block;font-size:11px;color:var(--blue-deep);font-family:'Gaegu',sans-serif;font-weight:700;margin-top:4px;}
+  body.holmode .day.has{outline:2px dashed var(--blue);}
+  .holbanner{display:none;max-width:1000px;margin:0 auto 8px;padding:8px 14px;background:var(--holiday);color:var(--blue-deep);
+    border-radius:12px;text-align:center;font-family:'Gaegu',sans-serif;font-size:15px;font-weight:700;}
+  body.holmode .holbanner{display:block;}
+  #holidayBtn.on{color:var(--blue-deep);font-weight:700;}
 
   .slot{border:2px dashed var(--blue);border-radius:12px;padding:9px 10px;margin-bottom:9px;cursor:pointer;min-height:70px;transition:.12s;}
   .slot:hover{background:#F6FBFD;border-color:var(--blue-deep);}
@@ -147,6 +155,7 @@
 
   <div class="util">
     <button id="refreshBtn">🔄 重新整理</button>
+    <button id="holidayBtn">🏖 設定放假日</button>
     <button id="printBtn">🖨 列印</button>
     <button id="exportCsv">匯出 Excel</button>
   </div>
@@ -161,6 +170,8 @@
     <h1 id="monthTitle">標題</h1>
     <button class="navbtn" id="nextM">›</button>
   </div>
+
+  <div class="holbanner" id="holbanner">點日期切換放假（淺藍＝放假），完成後再按一次「設定放假日」離開</div>
 
   <section class="page" id="pageEs">
     <div class="ctrls"><button class="btn primary" id="settingsBtn">⚙ 設定試上課表</button></div>
@@ -255,6 +266,7 @@
   let courseFilter='全部', searchText='';
   let tmpWeekdays=[], tmpSlots=[];
   let esRows=[], otherRows=[];
+  let holidays=new Set(), holidayMode=false, holidaysReady=true;
   let esTemplate=loadTemplate();
 
   // helpers
@@ -308,18 +320,23 @@
     let cells=WD_LABEL.map(w=>'<div class="dow">'+w+'</div>').join('');
     for(let i=0;i<first;i++)cells+='<div class="day blank"></div>';
     for(let d=1;d<=days;d++){
-      const ds=dateStr(y,m,d), wd=new Date(y,m-1,d).getDay(), active=tmpl.weekdays.includes(wd)&&tmpl.slots.length;
+      const ds=dateStr(y,m,d), wd=new Date(y,m-1,d).getDay(), isHol=holidays.has(ds);
+      const active=tmpl.weekdays.includes(wd)&&tmpl.slots.length&&!isHol;
       let badges='';
-      if(active){
+      if(isHol)badges='<span class="hol-label">放假</span>';
+      else if(active){
         let shown=0,total=0;
         tmpl.slots.forEach((sl,i)=>{const rows=esForDay(ds,i);total+=rows.length;
           rows.forEach(bk=>{if(shown<4){badges+='<span class="badge c'+(i%3)+'">'+esc(sl.start)+'-'+esc(bk.cn||bk.en||'?')+'</span>';shown++;}});});
         if(total>shown)badges+='<span class="badge more">+'+(total-shown)+'</span>';
       }
-      cells+='<div class="day'+(active?' has':'')+(ds===todayS?' today':'')+'"'+(active?' data-day="'+ds+'"':'')+'><span class="dnum">'+d+'</span>'+badges+'</div>';
+      const clickable=holidayMode||active;
+      const attr=holidayMode?(' data-hol="'+ds+'"'):(active?(' data-day="'+ds+'"'):'');
+      cells+='<div class="day'+(clickable?' has':'')+(isHol?' holiday':'')+(ds===todayS?' today':'')+'"'+attr+'><span class="dnum">'+d+'</span>'+badges+'</div>';
     }
     cal.innerHTML=head+'<div class="cal-grid">'+cells+'</div>';
     cal.querySelectorAll('[data-day]').forEach(c=>c.onclick=()=>openDay(c.dataset.day));
+    cal.querySelectorAll('[data-hol]').forEach(c=>c.onclick=()=>toggleHoliday(c.dataset.hol));
   }
 
   const dayOv=document.getElementById('dayOverlay'), bOv=document.getElementById('bookingOverlay');
@@ -407,14 +424,20 @@
     let cells=WD_LABEL.map(w=>'<div class="dow">'+w+'</div>').join('');
     for(let i=0;i<first;i++)cells+='<div class="day blank"></div>';
     for(let d=1;d<=days;d++){
-      const ds=dateStr(y,m,d), items=entriesOn(ds);
+      const ds=dateStr(y,m,d), isHol=holidays.has(ds), items=entriesOn(ds);
       let badges='';
-      items.slice(0,3).forEach(x=>{badges+='<span class="badge '+courseCls(x.course)+'">'+esc(x.cn||x.en||'?')+'</span>';});
-      if(items.length>3)badges+='<span class="badge more">+'+(items.length-3)+'</span>';
-      cells+='<div class="day has'+(ds===todayS?' today':'')+'" data-od="'+ds+'"><span class="dnum">'+d+'</span>'+badges+'</div>';
+      if(isHol)badges='<span class="hol-label">放假</span>';
+      else{
+        items.slice(0,3).forEach(x=>{badges+='<span class="badge '+courseCls(x.course)+'">'+esc(x.cn||x.en||'?')+'</span>';});
+        if(items.length>3)badges+='<span class="badge more">+'+(items.length-3)+'</span>';
+      }
+      const clickable=holidayMode||!isHol;
+      const attr=holidayMode?(' data-hol="'+ds+'"'):(!isHol?(' data-od="'+ds+'"'):'');
+      cells+='<div class="day'+(clickable?' has':'')+(isHol?' holiday':'')+(ds===todayS?' today':'')+'"'+attr+'><span class="dnum">'+d+'</span>'+badges+'</div>';
     }
     cal.innerHTML='<div class="cal-grid">'+cells+'</div>';
     cal.querySelectorAll('[data-od]').forEach(c=>c.onclick=()=>openOtherDay(c.dataset.od));
+    cal.querySelectorAll('[data-hol]').forEach(c=>c.onclick=()=>toggleHoliday(c.dataset.hol));
   }
   const odOv=document.getElementById('otherDayOverlay');
   function openOtherDay(ds){otherDayCtx=ds;renderOtherDay();odOv.classList.add('show');}
@@ -509,6 +532,28 @@
   document.getElementById('printBtn').onclick=()=>window.print();
   document.getElementById('refreshBtn').onclick=()=>fetchAll(true);
 
+  // ---------- holidays ----------
+  async function toggleHoliday(ds){
+    if(!holidaysReady){alert('放假日功能需要先在 Supabase 建一張資料表（請見說明的 SQL）');return;}
+    if(holidays.has(ds)){
+      const ok=await sbErr(sb.from('holidays').delete().eq('date',ds),'移除放假失敗');
+      if(ok!==null)holidays.delete(ds);
+    }else{
+      const ok=await sbErr(sb.from('holidays').insert({date:ds}),'設定放假失敗');
+      if(ok!==null)holidays.add(ds);
+    }
+    if(page==='es')renderCalendar();else renderOthersCal();
+  }
+  document.getElementById('holidayBtn').onclick=function(){
+    if(!holidaysReady){alert('放假日功能需要先在 Supabase 建一張資料表（請見說明的 SQL）');return;}
+    holidayMode=!holidayMode;
+    document.body.classList.toggle('holmode',holidayMode);
+    this.classList.toggle('on',holidayMode);
+    this.textContent=holidayMode?'✓ 完成放假設定':'🏖 設定放假日';
+    if(holidayMode&&page==='others'&&othersView==='list')othersView='cal';
+    render();
+  };
+
   // export csv
   document.getElementById('exportCsv').onclick=function(){
     const rows=[['類型','日期','星期','時段','中文姓名','英文姓名','年齡','課程','行政','來源']];
@@ -539,6 +584,9 @@
       return;
     }
     esRows=e1.data||[];otherRows=e2.data||[];
+    const e3=await sb.from('holidays').select('date');
+    if(e3.error){holidaysReady=false;holidays=new Set();}
+    else{holidaysReady=true;holidays=new Set((e3.data||[]).map(r=>r.date));}
     ld.style.display='none';
     render();
   }
