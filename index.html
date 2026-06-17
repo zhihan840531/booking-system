@@ -24,6 +24,14 @@
   .tab.active{transform:translateY(-1px);box-shadow:0 4px 0 rgba(0,0,0,.06);}
   .tab[data-page="es"].active{background:var(--pink);}
   .tab[data-page="others"].active{background:var(--mint);}
+  .tab[data-page="home"].active{background:var(--peach);}
+  .home{max-width:620px;margin:0 auto;padding:0 16px;}
+  .home h2{font-family:'Gaegu',sans-serif;font-size:20px;margin:20px 0 8px;display:flex;align-items:center;gap:8px;}
+  .home h2 .dot{width:12px;height:12px;border-radius:50%;display:inline-block;}
+  .home .dh{font-family:'Gaegu',sans-serif;font-weight:700;font-size:14px;color:var(--ink-soft);margin:9px 0 4px;}
+  .home .ln{background:#fff;border-radius:10px;padding:8px 12px;margin-bottom:5px;font-size:15px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+  .home .ln b{font-weight:700;}
+  .home .none{color:var(--ink-soft);font-family:'Gaegu',sans-serif;font-size:15px;padding:4px 2px 6px;}
 
   .util{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;padding:4px 16px 6px;}
   .util button{background:none;border:none;cursor:pointer;color:var(--ink-soft);font-size:13px;font-family:'Noto Sans TC',sans-serif;}
@@ -150,6 +158,7 @@
   </header>
 
   <nav class="tabs">
+    <button class="tab" data-page="home">🏠 首頁</button>
     <button class="tab" data-page="es">ES 試上</button>
     <button class="tab" data-page="others">其他課程</button>
   </nav>
@@ -157,6 +166,7 @@
   <div class="util">
     <button id="refreshBtn">🔄 重新整理</button>
     <button id="holidayBtn">🏖 設定放假日</button>
+    <button id="lineBtn">🔔 LINE 提醒</button>
     <button id="printBtn">🖨 列印</button>
     <button id="exportCsv">匯出 Excel</button>
   </div>
@@ -173,6 +183,16 @@
   </div>
 
   <div class="holbanner" id="holbanner">點日期切換放假（淺藍＝放假），完成後再按一次「設定放假日」離開</div>
+
+  <section class="page" id="pageHome">
+    <div class="monthbar">
+      <button class="navbtn" id="prevW">‹</button>
+      <h1 id="weekTitle">本週</h1>
+      <button class="navbtn" id="nextW">›</button>
+    </div>
+    <div class="ctrls"><button class="btn primary" id="copyWeek">📋 複製本週</button></div>
+    <div class="home" id="homeContent"></div>
+  </section>
 
   <section class="page" id="pageEs">
     <div class="ctrls"><button class="btn primary" id="settingsBtn">⚙ 設定試上課表</button></div>
@@ -253,6 +273,24 @@
     <div class="sheet-actions"><button class="btn primary" id="setSave" style="flex:1">儲存</button></div>
   </div></div>
 
+  <!-- LINE reminder settings -->
+  <div class="overlay" id="lineOverlay"><div class="sheet">
+    <h3>🔔 LINE 群組提醒設定</h3>
+    <div class="field"><label>LINE 群組 ID</label><input type="text" id="ln-group" placeholder="Cxxxxxxxxxxxxxxxx"></div>
+    <div id="ln-captured" style="display:none;font-size:13px;color:var(--ink-soft);margin:-6px 0 12px">
+      偵測到的群組 ID：<b id="ln-cap-val"></b> <button class="btn" id="ln-use" style="padding:4px 10px;font-size:12px">套用</button>
+    </div>
+    <div class="row2">
+      <div class="field"><label>提醒時間</label><input type="time" id="ln-time" value="08:30"></div>
+      <div class="field"><label>今日無預約時</label><select id="ln-empty"><option value="0">不發送</option><option value="1">發送「今日無預約」</option></select></div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn" id="ln-test">立即測試發送</button>
+      <button class="btn primary" id="ln-save">儲存</button>
+    </div>
+    <div class="hint">Channel Access Token 請在 Supabase 的 Edge Function 祕密設定（較安全）；群組 ID 與時間在這裡設定即可。提醒時間以台北時間為準。</div>
+  </div></div>
+
 <script>
 (function(){
   "use strict";
@@ -265,7 +303,7 @@
   const SOURCES=['Walk in','Call in','Online','設攤','家長介紹'];
   const TMPL_KEY='es_template_local';
 
-  let page='es', othersView='cal', currentYM=todayYM();
+  let page='home', othersView='cal', currentYM=todayYM(), weekOffset=0;
   let bookingCtx=null, dayCtx=null, editingEntryId=null, otherDayCtx=null;
   let courseFilter='全部', searchText='';
   let tmpWeekdays=[], tmpSlots=[];
@@ -299,6 +337,7 @@
   // ---------- top render ----------
   function render(){
     document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.page===page));
+    document.getElementById('pageHome').classList.toggle('show',page==='home');
     document.getElementById('pageEs').classList.toggle('show',page==='es');
     document.getElementById('pageOthers').classList.toggle('show',page==='others');
     document.getElementById('viewtoggle').style.display=page==='others'?'flex':'none';
@@ -310,10 +349,75 @@
     const showMonth=page==='es'||(page==='others'&&othersView==='cal');
     document.getElementById('monthbar').style.display=showMonth?'flex':'none';
     if(showMonth)document.getElementById('monthTitle').textContent=ymLabel(currentYM)+'　'+(page==='es'?'ES 試上':'其他課程');
-    if(page==='es')renderCalendar();
+    if(page==='home')renderHome();
+    else if(page==='es')renderCalendar();
     else if(othersView==='cal')renderOthersCal();
     else renderList();
   }
+
+  // ---------- home (weekly overview) ----------
+  function weekRange(offset){
+    const d=new Date();d.setHours(0,0,0,0);
+    const day=d.getDay(); const diffMon=(day===0?-6:1-day);
+    const mon=new Date(d);mon.setDate(d.getDate()+diffMon+offset*7);
+    const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+    const f=x=>dateStr(x.getFullYear(),x.getMonth()+1,x.getDate());
+    return{start:f(mon),end:f(sun),mon,sun};
+  }
+  function md(ds){const[,m,d]=ds.split('-').map(Number);return m+'/'+d;}
+  function wdOf(ds){const[y,m,d]=ds.split('-').map(Number);return WD_LABEL[new Date(y,m-1,d).getDay()];}
+  function buildWeek(offset){
+    const wr=weekRange(offset);
+    const inRange=ds=>ds>=wr.start&&ds<=wr.end;
+    const esByDate={}, otherByDate={};
+    esRows.filter(r=>inRange(r.date)).forEach(r=>{
+      const t=(esTemplate.slots[r.slot]||{}).start||'';
+      (esByDate[r.date]=esByDate[r.date]||[]).push({time:t,name:r.cn||r.en||'?',staff:r.staff||''});
+    });
+    otherRows.filter(o=>inRange(o.date)).forEach(o=>{
+      (otherByDate[o.date]=otherByDate[o.date]||[]).push({time:o.time||'',name:o.cn||o.en||'?',staff:o.staff||'',course:o.course||''});
+    });
+    Object.values(esByDate).forEach(a=>a.sort((x,y)=>x.time.localeCompare(y.time)));
+    Object.values(otherByDate).forEach(a=>a.sort((x,y)=>(x.time||'').localeCompare(y.time||'')));
+    return{wr,esByDate,otherByDate};
+  }
+  function renderHome(){
+    const{wr,esByDate,otherByDate}=buildWeek(weekOffset);
+    const label=weekOffset===0?'本週':(weekOffset===-1?'上週':(weekOffset===1?'下週':(weekOffset<0?Math.abs(weekOffset)+' 週前':weekOffset+' 週後')));
+    document.getElementById('weekTitle').textContent=label+'　'+md(wr.start)+'–'+md(wr.end);
+    const sec=(byDate)=>{
+      const dates=Object.keys(byDate).sort();
+      if(!dates.length)return '<div class="none">這週沒有資料</div>';
+      return dates.map(ds=>'<div class="dh">'+md(ds)+'（'+wdOf(ds)+'）</div>'+
+        byDate[ds].map(x=>'<div class="ln">'+(x.time?'<b>'+esc(x.time)+'</b>-':'')+esc(x.name)+(x.course?'-'+esc(x.course):'')+(x.staff?'-'+esc(x.staff):'')+'</div>').join('')
+      ).join('');
+    };
+    document.getElementById('homeContent').innerHTML=
+      '<h2><span class="dot" style="background:var(--pink-deep)"></span>本週試上</h2>'+sec(esByDate)+
+      '<h2><span class="dot" style="background:var(--mint-deep)"></span>本週課程介紹</h2>'+sec(otherByDate);
+  }
+  function weekText(){
+    const{wr,esByDate,otherByDate}=buildWeek(weekOffset);
+    const sec=(byDate)=>{
+      const dates=Object.keys(byDate).sort();
+      if(!dates.length)return '（無）';
+      return dates.map(ds=>md(ds)+'（'+wdOf(ds)+'）\n'+
+        byDate[ds].map(x=>(x.time?x.time+'-':'')+x.name+(x.course?'-'+x.course:'')+(x.staff?'-'+x.staff:'')).join('\n')
+      ).join('\n');
+    };
+    return '📅 '+md(wr.start)+'–'+md(wr.end)+' 課程總覽\n\n【本週試上】\n'+sec(esByDate)+'\n\n【本週課程介紹】\n'+sec(otherByDate);
+  }
+  document.getElementById('prevW').onclick=()=>{weekOffset--;renderHome();};
+  document.getElementById('nextW').onclick=()=>{weekOffset++;renderHome();};
+  document.getElementById('copyWeek').onclick=async function(){
+    const txt=weekText();
+    try{await navigator.clipboard.writeText(txt);alert('已複製本週總覽，可直接貼到 LINE ✓');}
+    catch(e){
+      const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();
+      try{document.execCommand('copy');alert('已複製本週總覽，可直接貼到 LINE ✓');}catch(_e){alert('複製失敗，請手動選取');}
+      document.body.removeChild(ta);
+    }
+  };
 
   // ---------- ES calendar ----------
   function renderCalendar(){
@@ -535,7 +639,42 @@
   document.getElementById('prevM').onclick=()=>shiftMonth(-1);
   document.getElementById('nextM').onclick=()=>shiftMonth(1);
 
-  [dayOv,bOv,eOv,setOv,odOv].forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('show');}));
+  // ---------- LINE reminder settings ----------
+  const FUNC_URL='https://srummvdutwgejxrwrfdx.supabase.co/functions/v1/daily-line-reminder';
+  const lnOv=document.getElementById('lineOverlay');
+  document.getElementById('lineBtn').onclick=async function(){
+    const{data,error}=await sb.from('line_settings').select('*').eq('id',1).single();
+    if(error){alert('LINE 提醒功能需要先在 Supabase 建一張設定表（請見說明的 SQL）');return;}
+    document.getElementById('ln-group').value=data.group_id||'';
+    document.getElementById('ln-time').value=data.send_time||'08:30';
+    document.getElementById('ln-empty').value=data.send_when_empty?'1':'0';
+    const cap=document.getElementById('ln-captured');
+    if(data.captured_group_id){cap.style.display='block';document.getElementById('ln-cap-val').textContent=data.captured_group_id;}
+    else cap.style.display='none';
+    lnOv.classList.add('show');
+  };
+  document.getElementById('ln-use').onclick=function(){document.getElementById('ln-group').value=document.getElementById('ln-cap-val').textContent;};
+  async function saveLine(){
+    const payload={group_id:document.getElementById('ln-group').value.trim(),send_time:document.getElementById('ln-time').value||'08:30',send_when_empty:document.getElementById('ln-empty').value==='1'};
+    const{error}=await sb.from('line_settings').update(payload).eq('id',1);
+    return error;
+  }
+  document.getElementById('ln-save').onclick=async function(){
+    const err=await saveLine();
+    if(err){alert('儲存失敗：'+err.message);return;}
+    lnOv.classList.remove('show');alert('已儲存 ✓');
+  };
+  document.getElementById('ln-test').onclick=async function(){
+    this.disabled=true;
+    const err=await saveLine();
+    if(err){alert('儲存失敗：'+err.message);this.disabled=false;return;}
+    try{const r=await fetch(FUNC_URL+'?force=1',{headers:{'Authorization':'Bearer '+SB_KEY,'apikey':SB_KEY}});
+      alert('測試結果：'+(await r.text()));}
+    catch(e){alert('測試失敗（可能函式還沒建好）：'+e.message);}
+    this.disabled=false;
+  };
+
+  [dayOv,bOv,eOv,setOv,odOv,lnOv].forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('show');}));
   document.getElementById('printBtn').onclick=()=>window.print();
   document.getElementById('refreshBtn').onclick=()=>fetchAll(true);
 
